@@ -1,0 +1,16 @@
+[package]
+name = "project_name"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = "0.17.2"
+
+[profile.dev]
+opt-level = 1
+debug = true
+overflow-checks = false
+
+[profile.dev.package."*"]
+opt-level = 3
+
