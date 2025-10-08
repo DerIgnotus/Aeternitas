@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 bevy = "0.17.2"
+bevy_egui = "0.37.1"
+bevy-inspector-egui = "0.34.0"
 
 [profile.dev]
 opt-level = 1
