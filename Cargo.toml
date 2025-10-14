@@ -1,5 +1,5 @@
 [package]
-name = "Aeternitas"
+name = "aeternitas"
 version = "0.1.0"
 edition = "2024"
 
@@ -15,4 +15,3 @@ overflow-checks = false
 
 [profile.dev.package."*"]
 opt-level = 3
-
