@@ -17,8 +17,8 @@ impl Default for ChunkManager {
         Self {
             loaded_chunks: HashMap::new(),
             force_loaded: HashSet::new(),
-            render_distance_horizontal: 8,
-            render_distance_vertical: 16,
+            render_distance_horizontal: 2,
+            render_distance_vertical: 2,
         }
     }
 }
@@ -38,6 +38,8 @@ impl ChunkManager {
         if self.force_loaded.contains(&chunk_pos) {
             return true;
         }
+
+        if self.loaded_chunks.len() > 10000 { warn!("Chunk cap reached, skipping new loads"); return false; }
 
         let dx = (chunk_pos.x - player_chunk.x).abs();
         let dy = (chunk_pos.y - player_chunk.y).abs();
@@ -85,6 +87,56 @@ impl ChunkManager {
     }
 }
 
+pub fn update_chunks_around_player(
+    mut commands: Commands,
+    mut chunk_manager: ResMut<ChunkManager>,
+    camera_query: Query<&Transform, With<Camera>>,
+) {
+
+    // Get player/camera position
+    if let Ok(camera_transform) = camera_query.single() {
+        let player_pos = camera_transform.translation;
+        let player_chunk = ChunkPos::from_world_pos(player_pos.into());
+
+        // Use chunks_to_load() to get a list of desired chunks
+        let desired_chunks = chunk_manager.chunks_to_load(player_chunk);
+
+        for chunk_pos in desired_chunks {
+            // Check if each chunk should load
+            if chunk_manager.should_load(chunk_pos, player_chunk)
+                && !chunk_manager.is_loaded(chunk_pos)
+            {
+                // Spawn and register it
+                let chunk = Chunk::test_chunk(chunk_pos);
+                //chunk
+                let entity = commands.spawn((
+                    chunk,
+                    Transform::from_translation(chunk_pos.to_world_pos().to_vec3()),
+                    GlobalTransform::default(),
+                )).id();
+
+                chunk_manager.register_chunk(chunk_pos, entity);
+
+                info!("Spawned chunk at {:?}", chunk_pos);
+            }
+        }
+
+        // Unload far-away chunks
+        let mut to_unload = Vec::new();
+        for (&pos, &entity) in chunk_manager.loaded_chunks.iter() {
+            if !chunk_manager.should_load(pos, player_chunk) {
+                to_unload.push((pos, entity));
+            }
+        }
+
+        for (pos, entity) in to_unload {
+            commands.entity(entity).despawn();
+            chunk_manager.unregister_chunk(pos);
+            info!("Unloaded chunk at {:?}", pos);
+        }
+    }
+}
+
 /// Test Chunks
 pub fn spawn_initial_chunks(
     mut commands: Commands,
@@ -99,7 +151,7 @@ pub fn spawn_initial_chunks(
         Transform::from_translation(chunk_pos.to_world_pos().to_vec3()),
         GlobalTransform::default(),
     )).id();
-
+    
     chunk_manager.register_chunk(chunk_pos, entity);
     
     info!("Spawned test chunk at {:?}", chunk_pos);

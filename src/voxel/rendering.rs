@@ -9,10 +9,16 @@ pub fn mesh_chunks(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     block_registry: Res<BlockRegistry>,
-    query: Query<(Entity, &Chunk), With<NeedsMesh>>,
+    mut query: Query<(Entity, &mut Chunk), With<NeedsMesh>>,
 ) {
-    for (entity, chunk) in query.iter() {
-        let mesh = generate_chunk_mesh(chunk, &block_registry);
+    for (entity, mut chunk) in query.iter_mut() {
+
+        if !chunk.dirty {
+            commands.entity(entity).remove::<NeedsMesh>();
+            continue;
+        }
+
+        let mesh = generate_chunk_mesh(&chunk, &block_registry);
         let mesh_handle = meshes.add(mesh);
         
         let material = materials.add(StandardMaterial {
@@ -26,6 +32,7 @@ pub fn mesh_chunks(
         commands.entity(entity).insert(Mesh3d(mesh_handle));
         commands.entity(entity).insert(MeshMaterial3d(material));
         commands.entity(entity).remove::<NeedsMesh>();
+
 
         info!("Generated mesh for chunk at {:?}", chunk.pos);
     }

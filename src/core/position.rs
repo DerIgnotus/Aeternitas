@@ -4,7 +4,7 @@ use std::ops::Add;
 /// World Wrap
 pub const WORLD_SIZE: i32 = 1000;
 pub const WORLD_HEIGHT: i32 = 1000;
-pub const CHUNK_SIZE: u8 = 25;
+pub const CHUNK_SIZE: u8 = 32;
 pub const CHUNK_SIZE_I32: i32 = CHUNK_SIZE as i32;
 
 /// Chunk Position
@@ -37,6 +37,17 @@ impl ChunkPos {
             self.y * CHUNK_SIZE_I32,
             self.z * CHUNK_SIZE_I32,
         )
+    }
+
+    pub fn from_world_pos(world: Vec3) -> ChunkPos {
+        // Convert CHUNK_SIZE to f32 before division
+        let size = CHUNK_SIZE as f32;
+
+        let x = (world.x / size).floor() as i32;
+        let y = (world.y / size).floor() as i32;
+        let z = (world.z / size).floor() as i32;
+
+        ChunkPos::new(x, y, z)
     }
 
     /// Neighbor Chunk Positions

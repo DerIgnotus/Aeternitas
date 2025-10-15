@@ -22,7 +22,7 @@ fn main() {
         // Startup
         .add_systems(
             Startup,
-            (setup_camera, setup_lighting, spawn_initial_chunks, cursor),
+            (setup_camera, setup_lighting, cursor),
         )
         // Update
         .add_systems(
@@ -30,7 +30,8 @@ fn main() {
             (
                 camera_movement,
                 camera_look,
-                mark_initial_chunks,
+                update_chunks_around_player,
+                //mark_initial_chunks, // only used for test chunks
                 mark_dirty_chunks,
                 mesh_chunks,
                 exit_system,
