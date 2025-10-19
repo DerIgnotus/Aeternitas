@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use std::ops::Add;
 
 /// World Wrap
-pub const WORLD_SIZE: i32 = 1000;
-pub const WORLD_HEIGHT: i32 = 1000;
+pub const WORLD_SIZE: i32 = 1024;
+pub const WORLD_HEIGHT: i32 = 512;
 pub const CHUNK_SIZE: u8 = 32;
 pub const CHUNK_SIZE_I32: i32 = CHUNK_SIZE as i32;
 

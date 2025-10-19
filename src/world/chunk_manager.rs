@@ -1,5 +1,6 @@
-use crate::core::position::ChunkPos;
+use crate::core::position::{ChunkPos, CHUNK_SIZE};
 use crate::world::chunk::Chunk;
+use crate::world::octree::Octree;
 use bevy::prelude::*;
 use std::collections::{HashMap, HashSet};
 
@@ -17,8 +18,8 @@ impl Default for ChunkManager {
         Self {
             loaded_chunks: HashMap::new(),
             force_loaded: HashSet::new(),
-            render_distance_horizontal: 2,
-            render_distance_vertical: 2,
+            render_distance_horizontal: 16,
+            render_distance_vertical: 8,
         }
     }
 }
@@ -91,40 +92,51 @@ pub fn update_chunks_around_player(
     mut commands: Commands,
     mut chunk_manager: ResMut<ChunkManager>,
     camera_query: Query<&Transform, With<Camera>>,
+    mut octree: ResMut<Octree>,
 ) {
-
-    // Get player/camera position
     if let Ok(camera_transform) = camera_query.single() {
-        let player_pos = camera_transform.translation;
-        let player_chunk = ChunkPos::from_world_pos(player_pos.into());
 
-        // Use chunks_to_load() to get a list of desired chunks
-        let desired_chunks = chunk_manager.chunks_to_load(player_chunk);
+        // Subdivide octree nodes near the player (in world coordinates)
+        octree.subdivide_near_player(camera_transform.translation);
 
-        for chunk_pos in desired_chunks {
-            // Check if each chunk should load
-            if chunk_manager.should_load(chunk_pos, player_chunk)
-                && !chunk_manager.is_loaded(chunk_pos)
-            {
-                // Spawn and register it
-                let chunk = Chunk::test_chunk(chunk_pos);
-                //chunk
+        // Collect leaf nodes
+        let leaves = octree.collect_leaves();
+
+        // Convert leaf nodes directly to chunk positions in grid coordinates
+        let leaf_positions: Vec<ChunkPos> = leaves
+            .iter()
+            .map(|node| {
+                // Compute node's minimum corner in grid space
+                let node_min = node.center - Vec3::splat(node.size / 2.0);
+                ChunkPos::from_world_pos(node_min)
+            })
+            .collect();
+
+        for node in &leaves {
+            let node_min = node.center - Vec3::splat(node.size / 2.0);
+            let chunk_pos = ChunkPos::from_world_pos(node_min);
+
+            if !chunk_manager.is_loaded(chunk_pos) {
+                // Compute LOD based on node size relative to base CHUNK_SIZE
+                let lod = (node.size / CHUNK_SIZE as f32).log2() as u8;
+
+                let chunk = Chunk::generate_chunk(chunk_pos, lod);
+
                 let entity = commands.spawn((
                     chunk,
-                    Transform::from_translation(chunk_pos.to_world_pos().to_vec3()),
+                    Transform::from_translation(node_min),
                     GlobalTransform::default(),
                 )).id();
 
                 chunk_manager.register_chunk(chunk_pos, entity);
-
-                info!("Spawned chunk at {:?}", chunk_pos);
+                info!("Spawned chunk at {:?} (size {:.1}, lod {})", node_min, node.size, lod);
             }
         }
 
-        // Unload far-away chunks
+        // Unload chunks that are no longer in leaves
         let mut to_unload = Vec::new();
         for (&pos, &entity) in chunk_manager.loaded_chunks.iter() {
-            if !chunk_manager.should_load(pos, player_chunk) {
+            if !leaf_positions.contains(&pos) {
                 to_unload.push((pos, entity));
             }
         }
@@ -144,7 +156,7 @@ pub fn spawn_initial_chunks(
 ) {
 
     let chunk_pos = ChunkPos::new(0, 0, 0);
-    let chunk = Chunk::test_chunk(chunk_pos);
+    let chunk = Chunk::test_chunk(chunk_pos, 0);
     
     let entity = commands.spawn((
         chunk,

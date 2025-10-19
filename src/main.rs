@@ -2,6 +2,7 @@ use aeternitas::core::block::BlockRegistry;
 use aeternitas::player::controller::*;
 use aeternitas::voxel::rendering::*;
 use aeternitas::world::chunk_manager::*;
+use aeternitas::world::octree::*;
 use bevy::app::AppExit;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, WindowResolution};
@@ -22,7 +23,7 @@ fn main() {
         // Startup
         .add_systems(
             Startup,
-            (setup_camera, setup_lighting, cursor),
+            (setup_camera, setup_lighting, cursor, setup_octree),
         )
         // Update
         .add_systems(
